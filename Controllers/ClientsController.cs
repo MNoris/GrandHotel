@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using GrandHotel.Models;
+using Microsoft.Data.SqlClient;
 
 namespace GrandHotel.Controllers
 {
@@ -31,7 +32,8 @@ namespace GrandHotel.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Client>> GetClient(int id)
         {
-            var client = await _context.Client.FindAsync(id);
+            // Récupère le client correspondant à l'ID passé en paramètre en incluant son adresse 
+            var client = await _context.Client.Include(c => c.Adresse).Include(c => c.Telephone).FirstOrDefaultAsync(c => c.Id == id);
 
             if (client == null)
             {
@@ -57,6 +59,7 @@ namespace GrandHotel.Controllers
             try
             {
                 await _context.SaveChangesAsync();
+                _context.Entry(client).Reload();
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -70,7 +73,7 @@ namespace GrandHotel.Controllers
                 }
             }
 
-            return NoContent();
+            return Ok(client);
         }
 
         // POST: api/Clients
@@ -79,26 +82,98 @@ namespace GrandHotel.Controllers
         [HttpPost]
         public async Task<ActionResult<Client>> PostClient(Client client)
         {
-            _context.Client.Add(client);
-            await _context.SaveChangesAsync();
+            try
+            {
+                //Ajoute le client dans un premier temps, puis son adresse
+                _context.Client.Add(client);
+                _context.Adresse.Add(client.Adresse);
 
-            return CreatedAtAction("GetClient", new { id = client.Id }, client);
+                //Lors de la sauvegarde, l'id du client sera automatiquement assigné au nouveau client, ainsi qu'à son adresse
+                await _context.SaveChangesAsync();
+
+                return CreatedAtAction("PostClient", new { id = client.Id }, client);
+            }
+            catch (Exception)
+            {
+                return BadRequest();
+            }
+        }
+
+        // POST: api/Clients/5
+        // To protect from overposting attacks, please enable the specific properties you want to bind to, for
+        // more details see https://aka.ms/RazorPagesCRUD.
+        [HttpPost("{id}")]
+        public async Task<ActionResult<Client>> PostTelephoneClient(int id, Telephone telephone)
+        {
+            try
+            {
+                //Vérifie que l'entité Telephone envoyée possède bien l'identifiant de client demandé associé.
+                //Sinon, attribue celui passé en paramètre
+                if (telephone.IdClient != id)
+                    telephone.IdClient = id;
+
+                _context.Telephone.Add(telephone);
+
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException dbuE)
+            {
+                var sqlE = (SqlException)dbuE.InnerException;
+
+                //Si le numéro d'exception correspond à 2627(Violation de contrainte de clé primaire), renvoie un message explicite
+                if (sqlE.Number == 2627)
+                {
+                    return BadRequest("Le numéro de téléphone " + telephone.Numero + " est déjà utilisé, et ne peut être duppliqué.");
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return CreatedAtAction("PostTelephoneClient", telephone);
         }
 
         // DELETE: api/Clients/5
         [HttpDelete("{id}")]
         public async Task<ActionResult<Client>> DeleteClient(int id)
         {
-            var client = await _context.Client.FindAsync(id);
+            //Récupère le client, son adresse et son / ses numéros de téléphone. Si null, retourne not found.
+            var client = await _context.Client.Include(c => c.Adresse).Include(c => c.Telephone).Where(c => c.Id == id).FirstOrDefaultAsync();
             if (client == null)
             {
                 return NotFound();
             }
 
-            _context.Client.Remove(client);
-            await _context.SaveChangesAsync();
+            try
+            {
+                //Vérifie la présence de l'adresse et numéro(s), et si présents, les supprimer d'abord
+                if (client.Adresse != null)
+                {
+                    _context.Adresse.Remove(client.Adresse);
+                }
 
-            return client;
+                if (client.Telephone != null)
+                {
+                    _context.Telephone.RemoveRange(client.Telephone);
+                }
+
+                _context.Client.Remove(client);
+
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException dbue)
+            {
+                var sqlEx = (SqlException)dbue.InnerException;
+
+                //Si le numéro d'exception correspond à 547(Violation de contrainte de clé étrangère), renvoie un message explicite
+                if (sqlEx.Number == 547)
+                    return BadRequest("Le client id " + id + " ne peut pas être supprimé, car il est utilisé ");
+                
+                throw;
+            }
+
+            return NoContent();
         }
 
         private bool ClientExists(int id)

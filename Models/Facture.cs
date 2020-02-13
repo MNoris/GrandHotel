@@ -17,7 +17,7 @@ namespace GrandHotel.Models
         public string CodeModePaiement { get; set; }
 
         public virtual ModePaiement CodeModePaiementNavigation { get; set; }
-        public virtual Client IdClientNavigation { get; set; }
+        internal virtual Client IdClientNavigation { get; set; }
         public virtual ICollection<LigneFacture> LigneFacture { get; set; }
     }
 }
