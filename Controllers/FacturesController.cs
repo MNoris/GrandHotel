@@ -33,16 +33,14 @@ namespace GrandHotel.Controllers
         {
             List<Facture> facture;
 
-            //Vérifie si les deux dates sont renseignées, et les utilise. Sinon, prendre les factures sur un an glissant
+            //Vérifie si les deux dates sont renseignées, et les utilise en tant que plage. Sinon, prendre les factures sur un an glissant
             if (dateMin != DateTime.MinValue && dateMax != DateTime.MinValue)
                 facture = await _context.Facture.Where(f => f.IdClient == id && f.DateFacture > dateMin && f.DateFacture < dateMax).ToListAsync();
             else
                 facture = await _context.Facture.Where(f => f.IdClient == id && f.DateFacture > DateTime.Now.AddYears(-1)).ToListAsync();
 
             if (facture == null)
-            {
                 return NotFound();
-            }
 
             return facture;
         }
@@ -54,9 +52,7 @@ namespace GrandHotel.Controllers
             var facture = await _context.Facture.Include(f => f.LigneFacture).FirstOrDefaultAsync(f => f.Id == id);
 
             if (facture == null)
-            {
                 return NotFound();
-            }
 
             return facture;
         }
@@ -68,10 +64,10 @@ namespace GrandHotel.Controllers
         public async Task<IActionResult> PutFacture(int id, Facture facture)
         {
             if (id != facture.Id)
-            {
                 return BadRequest("La facture passée en paramètre ne correspond pas au client demandé");
-            }
 
+            //Attache au contexte la facture passée en paramètre, puis défini ses champs DateFacture et CodeModePaiement en tant que modifié
+            _context.Attach(facture);
             _context.Entry(facture).Property("DateFacture").IsModified = true;
             _context.Entry(facture).Property("CodeModePaiement").IsModified = true;
 
@@ -83,13 +79,9 @@ namespace GrandHotel.Controllers
             catch (DbUpdateConcurrencyException)
             {
                 if (!FactureExists(id))
-                {
                     return NotFound("La facture ayant pour id " + id + " n'a pas été trouvée");
-                }
                 else
-                {
-                    throw;
-                }
+                    return BadRequest();
             }
 
             return NoContent();
@@ -104,7 +96,7 @@ namespace GrandHotel.Controllers
             _context.Facture.Add(facture);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetFacture", new { id = facture.Id }, facture);
+            return CreatedAtAction("PostFacture", new { id = facture.Id }, facture);
         }
 
         // POST: api/Factures
@@ -124,9 +116,8 @@ namespace GrandHotel.Controllers
 
                 _context.LigneFacture.Add(ligne);
                 await _context.SaveChangesAsync();
-
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 return BadRequest();
             }

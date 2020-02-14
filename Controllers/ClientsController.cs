@@ -36,9 +36,7 @@ namespace GrandHotel.Controllers
             var client = await _context.Client.Include(c => c.Adresse).Include(c => c.Telephone).FirstOrDefaultAsync(c => c.Id == id);
 
             if (client == null)
-            {
                 return NotFound();
-            }
 
             return client;
         }
@@ -50,9 +48,7 @@ namespace GrandHotel.Controllers
         public async Task<IActionResult> PutClient(int id, Client client)
         {
             if (id != client.Id)
-            {
-                return BadRequest();
-            }
+                return BadRequest("Le client demandé ne correspond pas à l'ID renseigné.");
 
             _context.Entry(client).State = EntityState.Modified;
 
@@ -64,13 +60,9 @@ namespace GrandHotel.Controllers
             catch (DbUpdateConcurrencyException)
             {
                 if (!ClientExists(id))
-                {
                     return NotFound();
-                }
                 else
-                {
-                    throw;
-                }
+                    return BadRequest();
             }
 
             return Ok(client);
@@ -107,10 +99,9 @@ namespace GrandHotel.Controllers
         {
             try
             {
-                //Vérifie que l'entité Telephone envoyée possède bien l'identifiant de client demandé associé.
-                //Sinon, attribue celui passé en paramètre
+                //Vérifie que l'entité Telephone envoyée est bien associée à l'ID client demandé
                 if (telephone.IdClient != id)
-                    telephone.IdClient = id;
+                    return BadRequest("Le client renseigné pour le téléphone ne correspond pas à l'ID client demandé.");
 
                 _context.Telephone.Add(telephone);
 
@@ -122,13 +113,9 @@ namespace GrandHotel.Controllers
 
                 //Si le numéro d'exception correspond à 2627(Violation de contrainte de clé primaire), renvoie un message explicite
                 if (sqlE.Number == 2627)
-                {
                     return BadRequest("Le numéro de téléphone " + telephone.Numero + " est déjà utilisé, et ne peut être duppliqué.");
-                }
                 else
-                {
-                    throw;
-                }
+                    return BadRequest();
             }
 
             return CreatedAtAction("PostTelephoneClient", telephone);
@@ -139,24 +126,18 @@ namespace GrandHotel.Controllers
         public async Task<ActionResult<Client>> DeleteClient(int id)
         {
             //Récupère le client, son adresse et son / ses numéros de téléphone. Si null, retourne not found.
-            var client = await _context.Client.Include(c => c.Adresse).Include(c => c.Telephone).Where(c => c.Id == id).FirstOrDefaultAsync();
+            var client = await _context.Client.Include(c => c.Adresse).Include(c => c.Telephone).FirstOrDefaultAsync(c => c.Id == id);
             if (client == null)
-            {
                 return NotFound();
-            }
 
             try
             {
                 //Vérifie la présence de l'adresse et numéro(s), et si présents, les supprimer d'abord
                 if (client.Adresse != null)
-                {
                     _context.Adresse.Remove(client.Adresse);
-                }
 
                 if (client.Telephone != null)
-                {
                     _context.Telephone.RemoveRange(client.Telephone);
-                }
 
                 _context.Client.Remove(client);
 
@@ -169,8 +150,8 @@ namespace GrandHotel.Controllers
                 //Si le numéro d'exception correspond à 547(Violation de contrainte de clé étrangère), renvoie un message explicite
                 if (sqlEx.Number == 547)
                     return BadRequest("Le client id " + id + " ne peut pas être supprimé, car il est utilisé ");
-                
-                throw;
+
+                return BadRequest();
             }
 
             return NoContent();
