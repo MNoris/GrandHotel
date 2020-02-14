@@ -68,7 +68,7 @@ namespace GrandHotel.Controllers
 
             //Attache au contexte la facture passée en paramètre, puis défini ses champs DateFacture et CodeModePaiement en tant que modifié
             _context.Attach(facture);
-            _context.Entry(facture).Property("DatePaiement").IsModified = true;
+            _context.Entry(facture).Property("DateFacture").IsModified = true;
             _context.Entry(facture).Property("CodeModePaiement").IsModified = true;
 
             try
