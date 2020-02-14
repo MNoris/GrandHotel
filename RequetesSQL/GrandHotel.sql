@@ -159,7 +159,6 @@ begin tran
     values ('CHB1-2019', DATEFROMPARTS(2019, 01, 01), @prixChb1),
            ('CHB2-2019', DATEFROMPARTS(2019, 01, 01), @prixChb2)
     insert TarifChambre select distinct NumChambre, substring(CodeTarif, 0, 6) + '2019' from TarifChambre
-    select * from TarifChambre where CodeTarif in ('CHB1-2019','CHB2-2019')
 rollback
 
 
