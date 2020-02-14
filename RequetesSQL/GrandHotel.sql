@@ -15,7 +15,7 @@ from (select Year(Jour)                                                         
       from Reservation R
       group by YEAR(jour), MONTH(Jour), DATEFROMPARTS(YEAR(Jour), MONTH(Jour), 1), NumChambre) as a
 group by mois, annee
-order by mois, annee
+order by annee,mois
 
 
 --3.	Le nombre total de jours réservés par les clients ayant une carte de fidélité au cours de la dernière année du calendrier (obtenue dynamiquement)
