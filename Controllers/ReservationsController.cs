@@ -22,23 +22,46 @@ namespace GrandHotel.Controllers
 
         // GET: api/Reservations
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Reservation>>> GetReservation()
+        public async Task<ActionResult<IEnumerable<Reservation>>> GetReservation([FromQuery]DateTime date)
         {
-            return await _context.Reservation.ToListAsync();
+            try
+            {
+                var reservations = await _context.Reservation.Where(r => r.Jour.Date == date.Date).ToListAsync();
+
+                if (reservations.Count == 0)
+                    return NotFound("Aucune réservations n'ont été trouvées pour cette date.");
+
+                return reservations;
+            }
+            catch (Exception)
+            {
+                return BadRequest();
+                throw;
+            }
         }
 
         // GET: api/Reservations/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Reservation>> GetReservation(short id)
+        public async Task<ActionResult<List<Reservation>>> GetReservationsClient(int id)
         {
-            var reservation = await _context.Reservation.FindAsync(id);
 
-            if (reservation == null)
+            try
             {
-                return NotFound();
+                var reservation = await _context.Reservation.Where(r => r.IdClient == id).ToListAsync();
+
+                if (reservation.Count() == 0)
+                {
+                    return NotFound("Aucune réservations n'ont été trouvées pour ce client.");
+                }
+
+                return reservation;
+            }
+            catch (Exception)
+            {
+                return BadRequest();
+                throw;
             }
 
-            return reservation;
         }
 
         // PUT: api/Reservations/5

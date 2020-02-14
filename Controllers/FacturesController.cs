@@ -19,7 +19,7 @@ namespace GrandHotel.Controllers
         {
             _context = context;
         }
-        
+
         // GET: api/Factures
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Facture>>> GetFacture()
@@ -69,20 +69,22 @@ namespace GrandHotel.Controllers
         {
             if (id != facture.Id)
             {
-                return BadRequest();
+                return BadRequest("La facture passée en paramètre ne correspond pas au client demandé");
             }
 
-            _context.Entry(facture).State = EntityState.Modified;
+            _context.Entry(facture).Property("DateFacture").IsModified = true;
+            _context.Entry(facture).Property("CodeModePaiement").IsModified = true;
 
             try
             {
                 await _context.SaveChangesAsync();
+                _context.Entry(facture).Reload();
             }
             catch (DbUpdateConcurrencyException)
             {
                 if (!FactureExists(id))
                 {
-                    return NotFound();
+                    return NotFound("La facture ayant pour id " + id + " n'a pas été trouvée");
                 }
                 else
                 {
@@ -109,21 +111,27 @@ namespace GrandHotel.Controllers
         // To protect from overposting attacks, please enable the specific properties you want to bind to, for
         // more details see https://aka.ms/RazorPagesCRUD.
         [HttpPost("details/{id}")]
-        public async Task<ActionResult<LigneFacture>> PostDetail(int id, LigneFacture detail)
+        public async Task<ActionResult<LigneFacture>> PostLigneFacture(int id, LigneFacture ligne)
         {
             try
             {
-                detail.IdFacture = id;
+                //Récupère la dernière ligne de la facture pour incrémenter le numéro de la ligne à ajouter
+                var lastRow = await _context.LigneFacture.Where(l => l.IdFacture == id).OrderBy(l => l.NumLigne).LastOrDefaultAsync();
+                if (lastRow.NumLigne > 0)
+                    ligne.NumLigne = lastRow.NumLigne + 1;
 
-                _context.LigneFacture.Add(detail);
+                ligne.IdFacture = id;
+
+                _context.LigneFacture.Add(ligne);
                 await _context.SaveChangesAsync();
 
-            } catch (Exception)
+            }
+            catch (Exception e)
             {
                 return BadRequest();
             }
 
-            return CreatedAtAction("PostDetail", detail);
+            return CreatedAtAction("PostLigneFacture", ligne);
         }
 
         // DELETE: api/Factures/5
