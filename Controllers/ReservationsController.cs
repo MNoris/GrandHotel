@@ -112,6 +112,7 @@ namespace GrandHotel.Controllers
             }
             catch (Exception e)
             {
+                //Si l'erreur SqlException reçue a pour numéro 547, renvoie l'erreur associée
                 SqlException sqle = (SqlException)e.InnerException;
                 if (sqle.Number == 547)
                     return BadRequest("Cette date n'existe pas dans le calendrier");
@@ -125,6 +126,7 @@ namespace GrandHotel.Controllers
         [HttpDelete]
         public async Task<ActionResult<Reservation>> DeleteReservation([FromQuery]short num, [FromQuery]DateTime date)
         {
+            //Vérifie la présence de la réservation en se basant sur ses clés primaires
             var reservation = await _context.Reservation.FindAsync(num, date);
             if (reservation == null)
             {
